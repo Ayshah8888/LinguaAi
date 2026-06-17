@@ -16,6 +16,12 @@ import Progress from "@/pages/progress";
 import JapaneseHub from "@/pages/japanese";
 import LevelTest from "@/pages/level-test";
 import Certificate from "@/pages/certificate";
+import AiTutor from "@/pages/ai-tutor";
+import SpacedRepetition from "@/pages/spaced-repetition";
+import Leaderboard from "@/pages/leaderboard";
+import VoicePractice from "@/pages/voice-practice";
+import OfflineLessons from "@/pages/offline";
+import Notifications from "@/pages/notifications";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,9 +41,15 @@ function Router() {
         <Route path="/learn/:language/:level" component={LevelDetail} />
         <Route path="/lesson/:id" component={LessonView} />
         <Route path="/vocabulary" component={Vocabulary} />
+        <Route path="/spaced-repetition" component={SpacedRepetition} />
         <Route path="/practice" component={Practice} />
+        <Route path="/voice" component={VoicePractice} />
         <Route path="/progress" component={Progress} />
+        <Route path="/leaderboard" component={Leaderboard} />
         <Route path="/japanese" component={JapaneseHub} />
+        <Route path="/tutor" component={AiTutor} />
+        <Route path="/offline" component={OfflineLessons} />
+        <Route path="/notifications" component={Notifications} />
         <Route path="/test/:language/:level" component={LevelTest} />
         <Route path="/certificate/:language/:level" component={Certificate} />
         <Route component={NotFound} />

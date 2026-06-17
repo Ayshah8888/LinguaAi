@@ -106,6 +106,42 @@ export const levelTestResultsTable = pgTable("level_test_results", {
   completedAt: timestamp("completed_at").defaultNow(),
 });
 
+export const spacedRepetitionTable = pgTable("spaced_repetition", {
+  id: serial("id").primaryKey(),
+  wordId: integer("word_id").notNull(),
+  language: text("language").notNull(),
+  easeFactor: integer("ease_factor").notNull().default(250),
+  interval: integer("interval").notNull().default(1),
+  repetitions: integer("repetitions").notNull().default(0),
+  dueDate: text("due_date").notNull(),
+  lastReviewed: timestamp("last_reviewed").defaultNow(),
+});
+
+export const leaderboardTable = pgTable("leaderboard", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull(),
+  avatar: text("avatar").notNull().default(""),
+  totalXp: integer("total_xp").notNull().default(0),
+  weeklyXp: integer("weekly_xp").notNull().default(0),
+  currentStreak: integer("current_streak").notNull().default(0),
+  lessonsCompleted: integer("lessons_completed").notNull().default(0),
+  level: text("level").notNull().default("A1"),
+  language: text("language").notNull().default("english"),
+  country: text("country").notNull().default(""),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const savedLessonsTable = pgTable("saved_lessons", {
+  id: serial("id").primaryKey(),
+  lessonId: integer("lesson_id").notNull(),
+  savedAt: timestamp("saved_at").defaultNow(),
+  content: text("content").notNull(),
+  title: text("title").notNull(),
+  language: text("language").notNull(),
+  level: text("level").notNull(),
+  skill: text("skill").notNull(),
+});
+
 export const insertLessonSchema = createInsertSchema(lessonsTable).omit({ id: true });
 export type InsertLesson = z.infer<typeof insertLessonSchema>;
 export type Lesson = typeof lessonsTable.$inferSelect;
