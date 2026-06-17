@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
-import { BookOpen, Headphones, PenTool, LayoutTemplate, PlayCircle, CheckCircle2, BookA, Zap } from "lucide-react";
+import { BookOpen, Headphones, PenTool, LayoutTemplate, PlayCircle, CheckCircle2, BookA, Zap, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { GetLessonsSkill } from "@workspace/api-client-react";
@@ -55,22 +55,30 @@ export default function LevelDetail() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <header>
-        <div className="flex items-center gap-3 mb-2">
-          <Link href="/learn">
-            <span className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">Learn</span>
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <span className="capitalize">{language}</span>
-          <span className="text-muted-foreground">/</span>
-          <span className="text-primary font-medium">{level}</span>
+      <header className="flex items-start justify-between gap-6 flex-wrap">
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-2">
+            <Link href="/learn">
+              <span className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">Learn</span>
+            </Link>
+            <span className="text-muted-foreground">/</span>
+            <span className="capitalize">{language}</span>
+            <span className="text-muted-foreground">/</span>
+            <span className="text-primary font-medium">{level}</span>
+          </div>
+          <h1 className="text-4xl font-display font-bold tracking-tight mb-2">
+            {currentLevelInfo?.name || `Level ${level}`}
+          </h1>
+          <p className="text-muted-foreground max-w-2xl">
+            {currentLevelInfo?.description || `Master the ${level} curriculum for ${language}.`}
+          </p>
         </div>
-        <h1 className="text-4xl font-display font-bold tracking-tight mb-2">
-          {currentLevelInfo?.name || `Level ${level}`}
-        </h1>
-        <p className="text-muted-foreground max-w-2xl">
-          {currentLevelInfo?.description || `Master the ${level} curriculum for ${language}.`}
-        </p>
+        <Link href={`/test/${language}/${level}`}>
+          <button className="flex items-center gap-2 px-5 py-3 rounded-xl bg-primary/10 border border-primary/30 text-primary font-semibold text-sm hover:bg-primary hover:text-primary-foreground transition-all duration-200 shadow-[0_0_15px_rgba(139,92,246,0.15)] hover:shadow-[0_0_25px_rgba(139,92,246,0.4)] group shrink-0">
+            <Trophy className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            Take Level Test
+          </button>
+        </Link>
       </header>
 
       {/* Skills Filter */}

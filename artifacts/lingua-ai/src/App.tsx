@@ -14,6 +14,8 @@ import Vocabulary from "@/pages/vocabulary";
 import Practice from "@/pages/practice";
 import Progress from "@/pages/progress";
 import JapaneseHub from "@/pages/japanese";
+import LevelTest from "@/pages/level-test";
+import Certificate from "@/pages/certificate";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,6 +38,8 @@ function Router() {
         <Route path="/practice" component={Practice} />
         <Route path="/progress" component={Progress} />
         <Route path="/japanese" component={JapaneseHub} />
+        <Route path="/test/:language/:level" component={LevelTest} />
+        <Route path="/certificate/:language/:level" component={Certificate} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

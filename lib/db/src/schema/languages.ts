@@ -93,6 +93,19 @@ export const completedLessonsTable = pgTable("completed_lessons", {
   xpEarned: integer("xp_earned").notNull().default(0),
 });
 
+export const levelTestResultsTable = pgTable("level_test_results", {
+  id: serial("id").primaryKey(),
+  language: text("language").notNull(),
+  level: text("level").notNull(),
+  score: integer("score").notNull(),
+  totalQuestions: integer("total_questions").notNull(),
+  correctAnswers: integer("correct_answers").notNull(),
+  timeTaken: integer("time_taken").notNull().default(0),
+  passed: boolean("passed").notNull().default(false),
+  answers: text("answers").array().notNull().default([]),
+  completedAt: timestamp("completed_at").defaultNow(),
+});
+
 export const insertLessonSchema = createInsertSchema(lessonsTable).omit({ id: true });
 export type InsertLesson = z.infer<typeof insertLessonSchema>;
 export type Lesson = typeof lessonsTable.$inferSelect;
