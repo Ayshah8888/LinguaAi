@@ -1,22 +1,35 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: LinguaAI Language Learning Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: languages
+    description: Language management
+  - name: lessons
+    description: Lesson management
+  - name: vocabulary
+    description: Vocabulary words
+  - name: progress
+    description: User progress tracking
+  - name: exercises
+    description: Exercises and quizzes
+  - name: evaluation
+    description: AI evaluation and feedback
+  - name: dashboard
+    description: Dashboard summaries
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +37,353 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /languages:
+    get:
+      operationId: getLanguages
+      tags: [languages]
+      summary: Get all supported languages
+      responses:
+        "200":
+          description: List of languages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Language"
+
+  /levels:
+    get:
+      operationId: getLevels
+      tags: [languages]
+      summary: Get all CEFR levels
+      parameters:
+        - name: language
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of levels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Level"
+
+  /lessons:
+    get:
+      operationId: getLessons
+      tags: [lessons]
+      summary: Get lessons with optional filters
+      parameters:
+        - name: language
+          in: query
+          schema:
+            type: string
+        - name: level
+          in: query
+          schema:
+            type: string
+        - name: skill
+          in: query
+          schema:
+            type: string
+            enum: [reading, listening, writing, grammar, vocabulary]
+      responses:
+        "200":
+          description: List of lessons
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lesson"
+    post:
+      operationId: createLesson
+      tags: [lessons]
+      summary: Create a new lesson
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LessonInput"
+      responses:
+        "201":
+          description: Created lesson
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+
+  /lessons/{id}:
+    get:
+      operationId: getLesson
+      tags: [lessons]
+      summary: Get a single lesson
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lesson details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+
+  /vocabulary:
+    get:
+      operationId: getVocabulary
+      tags: [vocabulary]
+      summary: Get vocabulary words
+      parameters:
+        - name: language
+          in: query
+          schema:
+            type: string
+        - name: level
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of vocabulary words
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VocabWord"
+    post:
+      operationId: createVocabWord
+      tags: [vocabulary]
+      summary: Create a vocabulary word
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VocabWordInput"
+      responses:
+        "201":
+          description: Created word
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VocabWord"
+
+  /vocabulary/{id}:
+    get:
+      operationId: getVocabWord
+      tags: [vocabulary]
+      summary: Get a single vocabulary word
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Vocabulary word
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VocabWord"
+
+  /progress:
+    get:
+      operationId: getProgress
+      tags: [progress]
+      summary: Get user progress
+      parameters:
+        - name: language
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User progress data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProgress"
+    post:
+      operationId: updateProgress
+      tags: [progress]
+      summary: Update user progress after completing a lesson
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProgressInput"
+      responses:
+        "200":
+          description: Updated progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProgress"
+
+  /exercises:
+    get:
+      operationId: getExercises
+      tags: [exercises]
+      summary: Get exercises for a lesson or level
+      parameters:
+        - name: lessonId
+          in: query
+          schema:
+            type: integer
+        - name: language
+          in: query
+          schema:
+            type: string
+        - name: level
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [multiple_choice, fill_blank, translation, listening, writing_prompt]
+      responses:
+        "200":
+          description: List of exercises
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Exercise"
+
+  /exercises/{id}/submit:
+    post:
+      operationId: submitExercise
+      tags: [exercises]
+      summary: Submit an exercise answer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExerciseSubmission"
+      responses:
+        "200":
+          description: Exercise result with feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExerciseResult"
+
+  /evaluate/writing:
+    post:
+      operationId: evaluateWriting
+      tags: [evaluation]
+      summary: AI evaluation of written text
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WritingEvalInput"
+      responses:
+        "200":
+          description: AI evaluation feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WritingEvalResult"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get overall learning dashboard summary
+      responses:
+        "200":
+          description: Dashboard summary data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/streak:
+    get:
+      operationId: getLearningStreak
+      tags: [dashboard]
+      summary: Get user learning streak data
+      responses:
+        "200":
+          description: Streak information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StreakData"
+
+  /dashboard/level-breakdown:
+    get:
+      operationId: getLevelBreakdown
+      tags: [dashboard]
+      summary: Get progress breakdown by level and skill
+      parameters:
+        - name: language
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Level breakdown data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LevelBreakdown"
+
+  /vocabulary/daily:
+    get:
+      operationId: getDailyWords
+      tags: [vocabulary]
+      summary: Get daily vocabulary challenge words
+      parameters:
+        - name: language
+          in: query
+          schema:
+            type: string
+        - name: level
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Daily words
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VocabWord"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +394,393 @@ components:
       required:
         - status
 
+    Language:
+      type: object
+      required: [id, code, name, flag, description]
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        flag:
+          type: string
+        description:
+          type: string
+        totalLessons:
+          type: integer
+        totalWords:
+          type: integer
+
+    Level:
+      type: object
+      required: [id, code, name, language, description, order]
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        language:
+          type: string
+        description:
+          type: string
+        order:
+          type: integer
+        totalLessons:
+          type: integer
+        completedLessons:
+          type: integer
+
+    Lesson:
+      type: object
+      required: [id, title, language, level, skill, content, duration, xp]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        language:
+          type: string
+        level:
+          type: string
+        skill:
+          type: string
+        content:
+          type: string
+        audioUrl:
+          type: ["string", "null"]
+        duration:
+          type: integer
+        xp:
+          type: integer
+        isCompleted:
+          type: boolean
+        description:
+          type: string
+        objectives:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    LessonInput:
+      type: object
+      required: [title, language, level, skill, content, duration, xp]
+      properties:
+        title:
+          type: string
+        language:
+          type: string
+        level:
+          type: string
+        skill:
+          type: string
+        content:
+          type: string
+        audioUrl:
+          type: ["string", "null"]
+        duration:
+          type: integer
+        xp:
+          type: integer
+        description:
+          type: string
+        objectives:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    VocabWord:
+      type: object
+      required: [id, word, translation, language, level, phonetic]
+      properties:
+        id:
+          type: integer
+        word:
+          type: string
+        translation:
+          type: string
+        language:
+          type: string
+        level:
+          type: string
+        phonetic:
+          type: string
+        exampleSentence:
+          type: string
+        exampleTranslation:
+          type: string
+        category:
+          type: string
+        isMastered:
+          type: boolean
+        difficulty:
+          type: integer
+        notes:
+          type: ["string", "null"]
+        reading:
+          type: ["string", "null"]
+
+    VocabWordInput:
+      type: object
+      required: [word, translation, language, level, phonetic]
+      properties:
+        word:
+          type: string
+        translation:
+          type: string
+        language:
+          type: string
+        level:
+          type: string
+        phonetic:
+          type: string
+        exampleSentence:
+          type: string
+        exampleTranslation:
+          type: string
+        category:
+          type: string
+        difficulty:
+          type: integer
+        notes:
+          type: ["string", "null"]
+        reading:
+          type: ["string", "null"]
+
+    UserProgress:
+      type: object
+      required: [language, level, totalXp, lessonsCompleted, currentStreak, wordsLearned]
+      properties:
+        language:
+          type: string
+        level:
+          type: string
+        totalXp:
+          type: integer
+        lessonsCompleted:
+          type: integer
+        currentStreak:
+          type: integer
+        wordsLearned:
+          type: integer
+        readingScore:
+          type: integer
+        listeningScore:
+          type: integer
+        writingScore:
+          type: integer
+        lastActivity:
+          type: string
+
+    ProgressInput:
+      type: object
+      required: [language, lessonId, xpEarned, skill]
+      properties:
+        language:
+          type: string
+        lessonId:
+          type: integer
+        xpEarned:
+          type: integer
+        skill:
+          type: string
+        score:
+          type: integer
+
+    Exercise:
+      type: object
+      required: [id, type, question, language, level]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        question:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        correctAnswer:
+          type: string
+        language:
+          type: string
+        level:
+          type: string
+        lessonId:
+          type: ["integer", "null"]
+        hint:
+          type: ["string", "null"]
+        audioUrl:
+          type: ["string", "null"]
+        xp:
+          type: integer
+
+    ExerciseSubmission:
+      type: object
+      required: [answer]
+      properties:
+        answer:
+          type: string
+
+    ExerciseResult:
+      type: object
+      required: [isCorrect, correctAnswer, feedback, xpEarned]
+      properties:
+        isCorrect:
+          type: boolean
+        correctAnswer:
+          type: string
+        feedback:
+          type: string
+        xpEarned:
+          type: integer
+        explanation:
+          type: string
+
+    WritingEvalInput:
+      type: object
+      required: [text, language, level, prompt]
+      properties:
+        text:
+          type: string
+        language:
+          type: string
+        level:
+          type: string
+        prompt:
+          type: string
+
+    WritingEvalResult:
+      type: object
+      required: [score, feedback, corrections, suggestions, grammarScore, vocabularyScore, coherenceScore]
+      properties:
+        score:
+          type: integer
+        feedback:
+          type: string
+        corrections:
+          type: array
+          items:
+            $ref: "#/components/schemas/TextCorrection"
+        suggestions:
+          type: array
+          items:
+            type: string
+        grammarScore:
+          type: integer
+        vocabularyScore:
+          type: integer
+        coherenceScore:
+          type: integer
+        improvedVersion:
+          type: string
+
+    TextCorrection:
+      type: object
+      required: [original, corrected, explanation]
+      properties:
+        original:
+          type: string
+        corrected:
+          type: string
+        explanation:
+          type: string
+
+    DashboardSummary:
+      type: object
+      required: [totalXp, weeklyXp, lessonsCompleted, wordsLearned, currentStreak, longestStreak, activeLearning]
+      properties:
+        totalXp:
+          type: integer
+        weeklyXp:
+          type: integer
+        lessonsCompleted:
+          type: integer
+        wordsLearned:
+          type: integer
+        currentStreak:
+          type: integer
+        longestStreak:
+          type: integer
+        activeLearning:
+          type: array
+          items:
+            $ref: "#/components/schemas/LanguageSummary"
+        recentLessons:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lesson"
+
+    LanguageSummary:
+      type: object
+      required: [language, level, xp, progress]
+      properties:
+        language:
+          type: string
+        level:
+          type: string
+        xp:
+          type: integer
+        progress:
+          type: integer
+
+    StreakData:
+      type: object
+      required: [currentStreak, longestStreak, weeklyActivity]
+      properties:
+        currentStreak:
+          type: integer
+        longestStreak:
+          type: integer
+        weeklyActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/DayActivity"
+        todayGoalMet:
+          type: boolean
+        dailyGoalXp:
+          type: integer
+        todayXp:
+          type: integer
+
+    DayActivity:
+      type: object
+      required: [date, xp, lessonsCompleted]
+      properties:
+        date:
+          type: string
+        xp:
+          type: integer
+        lessonsCompleted:
+          type: integer
+
+    LevelBreakdown:
+      type: object
+      required: [level, language, readingProgress, listeningProgress, writingProgress, totalLessons, completedLessons]
+      properties:
+        level:
+          type: string
+        language:
+          type: string
+        readingProgress:
+          type: integer
+        listeningProgress:
+          type: integer
+        writingProgress:
+          type: integer
+        totalLessons:
+          type: integer
+        completedLessons:
+          type: integer

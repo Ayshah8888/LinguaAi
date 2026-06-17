@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "LinguaAI - Language Learning Platform"
+version = "1.0.0"
+id = "artifacts/lingua-ai"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19529
+
+[services.development]
+run = "pnpm --filter @workspace/lingua-ai run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/lingua-ai", "run", "build" ]
+publicDir = "artifacts/lingua-ai/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19529"
+BASE_PATH = "/"
