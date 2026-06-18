@@ -3,10 +3,11 @@ import { useState, useEffect } from "react";
 import {
   BookOpen, Trophy, BookA, PenTool, LayoutDashboard, Flag,
   Bot, Brain, Mic, Users, Bell, WifiOff, Zap, Menu, X,
-  Home, ChevronRight
+  Home, ChevronRight, LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getApiUrl } from "@/lib/api";
+import { useAuth } from "@workspace/replit-auth-web";
 
 const NAV_GROUPS = [
   {
@@ -57,6 +58,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [totalXp, setTotalXp] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   // Close drawer on route change
   useEffect(() => { setDrawerOpen(false); }, [location]);
@@ -165,23 +167,39 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* User */}
       {!collapsed && (
-        <div className="p-3 border-t border-border/50">
+        <div className="p-3 border-t border-border/50 space-y-1">
           <div className="flex items-center gap-2.5 px-2 py-2 rounded-xl">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0">
-              JD
-            </div>
+            {user?.profileImageUrl ? (
+              <img src={user.profileImageUrl} alt="avatar" className="w-8 h-8 rounded-lg object-cover border border-primary/20 shrink-0" />
+            ) : (
+              <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                {user?.firstName?.[0] ?? "?"}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">John Doe</p>
+              <p className="text-sm font-medium truncate">{user?.firstName ?? "Learner"} {user?.lastName ?? ""}</p>
               <p className="text-xs text-muted-foreground truncate">Pro Learner</p>
             </div>
           </div>
+          <button onClick={logout}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors">
+            <LogOut className="w-3.5 h-3.5" /> Log out
+          </button>
         </div>
       )}
       {collapsed && (
-        <div className="p-3 border-t border-border/50 flex justify-center">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-            JD
-          </div>
+        <div className="p-3 border-t border-border/50 flex flex-col items-center gap-2">
+          {user?.profileImageUrl ? (
+            <img src={user.profileImageUrl} alt="avatar" className="w-8 h-8 rounded-lg object-cover border border-primary/20" />
+          ) : (
+            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+              {user?.firstName?.[0] ?? "?"}
+            </div>
+          )}
+          <button onClick={logout} title="Log out"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors">
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
     </>
@@ -281,14 +299,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-border/50">
+        <div className="p-3 border-t border-border/50 space-y-1">
           <div className="flex items-center gap-2.5 px-2 py-2">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary">JD</div>
-            <div>
-              <p className="text-sm font-medium">John Doe</p>
-              <p className="text-xs text-muted-foreground">Pro Learner</p>
+            {user?.profileImageUrl ? (
+              <img src={user.profileImageUrl} alt="avatar" className="w-8 h-8 rounded-lg object-cover border border-primary/20 shrink-0" />
+            ) : (
+              <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                {user?.firstName?.[0] ?? "?"}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{user?.firstName ?? "Learner"} {user?.lastName ?? ""}</p>
+              <p className="text-xs text-muted-foreground truncate">Pro Learner</p>
             </div>
           </div>
+          <button onClick={logout}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors">
+            <LogOut className="w-3.5 h-3.5" /> Log out
+          </button>
         </div>
       </div>
 

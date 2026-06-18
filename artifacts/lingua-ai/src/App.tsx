@@ -5,6 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Layout } from "@/components/layout";
 import NotFound from "@/pages/not-found";
+import LoginPage from "@/pages/login";
+import { useAuth } from "@workspace/replit-auth-web";
 
 import Dashboard from "@/pages/dashboard";
 import LearnHub from "@/pages/learn";
@@ -58,14 +60,42 @@ function Router() {
   );
 }
 
+function AppContent() {
+  const { isLoading, isAuthenticated } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center animate-pulse">
+            <span className="text-2xl">📚</span>
+          </div>
+          <div className="space-y-2 text-center">
+            <div className="h-2 w-32 bg-secondary rounded-full animate-pulse mx-auto" />
+            <div className="h-2 w-24 bg-secondary/60 rounded-full animate-pulse mx-auto" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  return (
+    <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+      <Router />
+    </WouterRouter>
+  );
+}
+
 function App() {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
-          </WouterRouter>
+          <AppContent />
           <Toaster />
         </TooltipProvider>
       </QueryClientProvider>
