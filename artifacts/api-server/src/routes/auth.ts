@@ -58,14 +58,26 @@ function getSafeReturnTo(value: unknown): string {
 }
 
 async function upsertUser(claims: Record<string, unknown>) {
+  // Replit OIDC may send name fields in various formats — handle all of them
+  const fullName = (claims.name as string) || (claims.username as string) || "";
+  const nameParts = fullName.trim().split(/\s+/);
+  const derivedFirst = nameParts[0] || null;
+  const derivedLast = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
+
   const userData = {
     id: claims.sub as string,
     email: (claims.email as string) || null,
-    firstName: (claims.first_name as string) || null,
-    lastName: (claims.last_name as string) || null,
-    profileImageUrl: (claims.profile_image_url || claims.picture) as
-      | string
-      | null,
+    firstName:
+      (claims.first_name as string) ||
+      (claims.given_name as string) ||
+      derivedFirst,
+    lastName:
+      (claims.last_name as string) ||
+      (claims.family_name as string) ||
+      derivedLast,
+    profileImageUrl: (
+      (claims.profile_image_url || claims.picture) as string
+    ) || null,
   };
 
   const [user] = await db
