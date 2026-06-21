@@ -14,6 +14,10 @@ import { eq, and, sql } from "drizzle-orm";
 
 const router = Router();
 
+function uid(req: any): string {
+  return req.user?.id ?? "guest";
+}
+
 // Languages
 router.get("/languages", async (req, res) => {
   try {
@@ -43,34 +47,27 @@ router.get("/levels", async (req, res) => {
   try {
     const params = GetLevelsQueryParams.safeParse(req.query);
     const language = params.success ? params.data.language : undefined;
+    const userId = uid(req);
 
-    let query = db.select().from(levelsTable);
     const levels = language
       ? await db.select().from(levelsTable).where(eq(levelsTable.language, language)).orderBy(levelsTable.order)
       : await db.select().from(levelsTable).orderBy(levelsTable.order);
 
     const lessonCounts = await db
-      .select({
-        language: lessonsTable.language,
-        level: lessonsTable.level,
-        count: sql<number>`count(*)::int`
-      })
+      .select({ language: lessonsTable.language, level: lessonsTable.level, count: sql<number>`count(*)::int` })
       .from(lessonsTable)
       .groupBy(lessonsTable.language, lessonsTable.level);
 
-    const completedCounts = await db
-      .select({
-        lessonId: completedLessonsTable.lessonId,
-      })
-      .from(completedLessonsTable);
+    const completedRows = await db.select({ lessonId: completedLessonsTable.lessonId })
+      .from(completedLessonsTable)
+      .where(eq(completedLessonsTable.userId, userId));
+    const completedIds = new Set(completedRows.map(c => c.lessonId));
 
-    const completedIds = new Set(completedCounts.map(c => c.lessonId));
-
-    const lessonsWithLevel = await db.select().from(lessonsTable);
+    const allLessons = await db.select().from(lessonsTable);
 
     const result = levels.map(level => {
       const total = lessonCounts.find(l => l.language === level.language && l.level === level.code)?.count ?? 0;
-      const completed = lessonsWithLevel.filter(
+      const completed = allLessons.filter(
         l => l.language === level.language && l.level === level.code && completedIds.has(l.id)
       ).length;
       return { ...level, totalLessons: total, completedLessons: completed };
@@ -87,8 +84,11 @@ router.get("/lessons", async (req, res) => {
   try {
     const params = GetLessonsQueryParams.safeParse(req.query);
     const { language, level, skill } = params.success ? params.data : {};
+    const userId = uid(req);
 
-    const completed = await db.select({ lessonId: completedLessonsTable.lessonId }).from(completedLessonsTable);
+    const completed = await db.select({ lessonId: completedLessonsTable.lessonId })
+      .from(completedLessonsTable)
+      .where(eq(completedLessonsTable.userId, userId));
     const completedIds = new Set(completed.map(c => c.lessonId));
 
     const conditions = [];
@@ -120,9 +120,11 @@ router.post("/lessons", async (req, res) => {
 router.get("/lessons/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const userId = uid(req);
     const [lesson] = await db.select().from(lessonsTable).where(eq(lessonsTable.id, id));
     if (!lesson) return res.status(404).json({ error: "Lesson not found" });
-    const completed = await db.select().from(completedLessonsTable).where(eq(completedLessonsTable.lessonId, id));
+    const completed = await db.select().from(completedLessonsTable)
+      .where(and(eq(completedLessonsTable.lessonId, id), eq(completedLessonsTable.userId, userId)));
     res.json({ ...lesson, isCompleted: completed.length > 0 });
   } catch (e) {
     res.status(500).json({ error: "Failed to get lesson" });
@@ -187,17 +189,17 @@ router.get("/vocabulary/:id", async (req, res) => {
   }
 });
 
-// Progress
+// Progress — scoped per user
 router.get("/progress", async (req, res) => {
   try {
     const params = GetProgressQueryParams.safeParse(req.query);
     const { language } = params.success ? params.data : {};
-    const conditions = [];
+    const userId = uid(req);
+
+    const conditions = [eq(userProgressTable.userId, userId)];
     if (language) conditions.push(eq(userProgressTable.language, language));
 
-    const [progress] = conditions.length > 0
-      ? await db.select().from(userProgressTable).where(and(...conditions))
-      : await db.select().from(userProgressTable);
+    const [progress] = await db.select().from(userProgressTable).where(and(...conditions));
 
     if (!progress) {
       return res.json({
@@ -223,36 +225,44 @@ router.post("/progress", async (req, res) => {
   try {
     const body = UpdateProgressBody.safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "Invalid progress data" });
-    const { language, lessonId, xpEarned, skill, score } = body.data;
+    const { language, lessonId, xpEarned, skill } = body.data;
+    const userId = uid(req);
 
-    await db.insert(completedLessonsTable).values({ lessonId, xpEarned }).onConflictDoNothing();
+    await db.insert(completedLessonsTable)
+      .values({ userId, lessonId, xpEarned })
+      .onConflictDoNothing();
 
     const today = new Date().toISOString().split("T")[0];
-    const [existing] = await db.select().from(dailyActivityTable).where(eq(dailyActivityTable.date, today));
+    const [existing] = await db.select().from(dailyActivityTable)
+      .where(and(eq(dailyActivityTable.userId, userId), eq(dailyActivityTable.date, today)));
     if (existing) {
       await db.update(dailyActivityTable)
         .set({ xp: existing.xp + xpEarned, lessonsCompleted: existing.lessonsCompleted + 1 })
-        .where(eq(dailyActivityTable.date, today));
+        .where(and(eq(dailyActivityTable.userId, userId), eq(dailyActivityTable.date, today)));
     } else {
-      await db.insert(dailyActivityTable).values({ date: today, xp: xpEarned, lessonsCompleted: 1 });
+      await db.insert(dailyActivityTable).values({ userId, date: today, xp: xpEarned, lessonsCompleted: 1 });
     }
 
-    const [existingProgress] = await db.select().from(userProgressTable).where(eq(userProgressTable.language, language));
+    const [existingProgress] = await db.select().from(userProgressTable)
+      .where(and(eq(userProgressTable.userId, userId), eq(userProgressTable.language, language)));
+
     let progress;
     if (existingProgress) {
       const updateData: Record<string, unknown> = {
         totalXp: existingProgress.totalXp + xpEarned,
         lessonsCompleted: existingProgress.lessonsCompleted + 1,
-        wordsLearned: existingProgress.wordsLearned,
         lastActivity: new Date(),
       };
       if (skill === "reading") updateData.readingScore = Math.min(100, (existingProgress.readingScore ?? 0) + 5);
       if (skill === "listening") updateData.listeningScore = Math.min(100, (existingProgress.listeningScore ?? 0) + 5);
       if (skill === "writing") updateData.writingScore = Math.min(100, (existingProgress.writingScore ?? 0) + 5);
-      const [updated] = await db.update(userProgressTable).set(updateData).where(eq(userProgressTable.language, language)).returning();
+      const [updated] = await db.update(userProgressTable).set(updateData)
+        .where(and(eq(userProgressTable.userId, userId), eq(userProgressTable.language, language)))
+        .returning();
       progress = updated;
     } else {
       const [created] = await db.insert(userProgressTable).values({
+        userId,
         language,
         level: "A1",
         totalXp: xpEarned,
@@ -318,12 +328,12 @@ router.post("/exercises/:id/submit", async (req, res) => {
   }
 });
 
-// Writing evaluation (AI-powered with rule-based fallback)
+// Writing evaluation
 router.post("/evaluate/writing", async (req, res) => {
   try {
     const body = EvaluateWritingBody.safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: "Invalid evaluation request" });
-    const { text, language, level, prompt } = body.data;
+    const { text, language, level } = body.data;
 
     const wordCount = text.split(/\s+/).filter(Boolean).length;
     const sentenceCount = text.split(/[.!?]+/).filter(Boolean).length;
@@ -337,19 +347,11 @@ router.post("/evaluate/writing", async (req, res) => {
     const score = Math.min(100, baseScore);
 
     const corrections = [];
-    if (text.toLowerCase() !== text.toUpperCase() && !/^[A-Z]/.test(text)) {
-      corrections.push({
-        original: text.substring(0, 20),
-        corrected: text.charAt(0).toUpperCase() + text.slice(1, 20),
-        explanation: "Start your text with a capital letter.",
-      });
+    if (!/^[A-Z]/.test(text)) {
+      corrections.push({ original: text.substring(0, 20), corrected: text.charAt(0).toUpperCase() + text.slice(1, 20), explanation: "Start with a capital letter." });
     }
     if (!text.match(/[.!?]$/)) {
-      corrections.push({
-        original: text.slice(-10),
-        corrected: text.slice(-10).trimEnd() + ".",
-        explanation: "End your sentences with proper punctuation.",
-      });
+      corrections.push({ original: text.slice(-10), corrected: text.slice(-10).trimEnd() + ".", explanation: "End with proper punctuation." });
     }
 
     const levelMessages: Record<string, string> = {
@@ -381,10 +383,11 @@ router.post("/evaluate/writing", async (req, res) => {
   }
 });
 
-// Dashboard
+// Dashboard — scoped per user
 router.get("/dashboard/summary", async (req, res) => {
   try {
-    const allProgress = await db.select().from(userProgressTable);
+    const userId = uid(req);
+    const allProgress = await db.select().from(userProgressTable).where(eq(userProgressTable.userId, userId));
     const totalXp = allProgress.reduce((a, p) => a + p.totalXp, 0);
     const totalLessons = allProgress.reduce((a, p) => a + p.lessonsCompleted, 0);
     const totalWords = allProgress.reduce((a, p) => a + p.wordsLearned, 0);
@@ -393,11 +396,14 @@ router.get("/dashboard/summary", async (req, res) => {
     const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
     const weekStr = weekAgo.toISOString().split("T")[0];
     const weekActivity = await db.select().from(dailyActivityTable)
-      .where(sql`date >= ${weekStr}`);
+      .where(and(eq(dailyActivityTable.userId, userId), sql`date >= ${weekStr}`));
     const weeklyXp = weekActivity.reduce((a, d) => a + d.xp, 0);
 
     const recentLessons = await db.select().from(lessonsTable).limit(5);
-    const completedIds = new Set((await db.select({ lessonId: completedLessonsTable.lessonId }).from(completedLessonsTable)).map(c => c.lessonId));
+    const completedIds = new Set(
+      (await db.select({ lessonId: completedLessonsTable.lessonId }).from(completedLessonsTable)
+        .where(eq(completedLessonsTable.userId, userId))).map(c => c.lessonId)
+    );
 
     const activeLearning = allProgress.map(p => ({
       language: p.language,
@@ -423,8 +429,10 @@ router.get("/dashboard/summary", async (req, res) => {
 
 router.get("/dashboard/streak", async (req, res) => {
   try {
-    const [progress] = await db.select().from(userProgressTable);
+    const userId = uid(req);
+    const [progress] = await db.select().from(userProgressTable).where(eq(userProgressTable.userId, userId));
     const activity = await db.select().from(dailyActivityTable)
+      .where(eq(dailyActivityTable.userId, userId))
       .orderBy(dailyActivityTable.date);
 
     const today = new Date().toISOString().split("T")[0];
@@ -455,32 +463,30 @@ router.get("/dashboard/level-breakdown", async (req, res) => {
   try {
     const params = GetLevelBreakdownQueryParams.safeParse(req.query);
     const { language } = params.success ? params.data : {};
+    const userId = uid(req);
 
     const levels = language
       ? await db.select().from(levelsTable).where(eq(levelsTable.language, language)).orderBy(levelsTable.order)
       : await db.select().from(levelsTable).orderBy(levelsTable.order);
 
     const allLessons = await db.select().from(lessonsTable);
-    const completedIds = new Set((await db.select({ lessonId: completedLessonsTable.lessonId }).from(completedLessonsTable)).map(c => c.lessonId));
+    const completedIds = new Set(
+      (await db.select({ lessonId: completedLessonsTable.lessonId }).from(completedLessonsTable)
+        .where(eq(completedLessonsTable.userId, userId))).map(c => c.lessonId)
+    );
 
     const result = levels.map(lvl => {
       const levelLessons = allLessons.filter(l => l.language === lvl.language && l.level === lvl.code);
-      const reading = levelLessons.filter(l => l.skill === "reading");
-      const listening = levelLessons.filter(l => l.skill === "listening");
-      const writing = levelLessons.filter(l => l.skill === "writing");
-
       const pct = (arr: typeof levelLessons) => {
         if (arr.length === 0) return 0;
-        const done = arr.filter(l => completedIds.has(l.id)).length;
-        return Math.round((done / arr.length) * 100);
+        return Math.round((arr.filter(l => completedIds.has(l.id)).length / arr.length) * 100);
       };
-
       return {
         level: lvl.code,
         language: lvl.language,
-        readingProgress: pct(reading),
-        listeningProgress: pct(listening),
-        writingProgress: pct(writing),
+        readingProgress: pct(levelLessons.filter(l => l.skill === "reading")),
+        listeningProgress: pct(levelLessons.filter(l => l.skill === "listening")),
+        writingProgress: pct(levelLessons.filter(l => l.skill === "writing")),
         totalLessons: levelLessons.length,
         completedLessons: levelLessons.filter(l => completedIds.has(l.id)).length,
       };

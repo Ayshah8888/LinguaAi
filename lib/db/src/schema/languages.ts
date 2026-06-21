@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, timestamp, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -67,6 +67,7 @@ export const exercisesTable = pgTable("exercises", {
 
 export const userProgressTable = pgTable("user_progress", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().default("guest"),
   language: text("language").notNull(),
   level: text("level").notNull().default("A1"),
   totalXp: integer("total_xp").notNull().default(0),
@@ -81,6 +82,7 @@ export const userProgressTable = pgTable("user_progress", {
 
 export const dailyActivityTable = pgTable("daily_activity", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().default("guest"),
   date: text("date").notNull(),
   xp: integer("xp").notNull().default(0),
   lessonsCompleted: integer("lessons_completed").notNull().default(0),
@@ -88,6 +90,7 @@ export const dailyActivityTable = pgTable("daily_activity", {
 
 export const completedLessonsTable = pgTable("completed_lessons", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().default("guest"),
   lessonId: integer("lesson_id").notNull(),
   completedAt: timestamp("completed_at").defaultNow(),
   xpEarned: integer("xp_earned").notNull().default(0),
@@ -95,6 +98,7 @@ export const completedLessonsTable = pgTable("completed_lessons", {
 
 export const levelTestResultsTable = pgTable("level_test_results", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().default("guest"),
   language: text("language").notNull(),
   level: text("level").notNull(),
   score: integer("score").notNull(),
@@ -108,6 +112,7 @@ export const levelTestResultsTable = pgTable("level_test_results", {
 
 export const spacedRepetitionTable = pgTable("spaced_repetition", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().default("guest"),
   wordId: integer("word_id").notNull(),
   language: text("language").notNull(),
   easeFactor: integer("ease_factor").notNull().default(250),
@@ -119,6 +124,7 @@ export const spacedRepetitionTable = pgTable("spaced_repetition", {
 
 export const leaderboardTable = pgTable("leaderboard", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().default("guest"),
   username: text("username").notNull(),
   avatar: text("avatar").notNull().default(""),
   totalXp: integer("total_xp").notNull().default(0),
@@ -133,6 +139,7 @@ export const leaderboardTable = pgTable("leaderboard", {
 
 export const savedLessonsTable = pgTable("saved_lessons", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().default("guest"),
   lessonId: integer("lesson_id").notNull(),
   savedAt: timestamp("saved_at").defaultNow(),
   content: text("content").notNull(),

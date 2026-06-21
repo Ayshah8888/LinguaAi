@@ -5,6 +5,10 @@ import { eq, and, sql } from "drizzle-orm";
 
 const router = Router();
 
+function uid(req: any): string {
+  return req.user?.id ?? "guest";
+}
+
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -52,23 +56,21 @@ router.get("/levels/:language/:level/test", async (req, res) => {
       questions = [...questions, ...shuffle(generalExercises)].slice(0, 10);
     }
 
-    const safeQuestions = questions.map(q => ({
-      id: q.id,
-      type: q.type,
-      question: q.question,
-      options: q.options,
-      language: q.language,
-      level: q.level,
-      hint: q.hint,
-      xp: q.xp,
-    }));
-
     res.json({
       language,
       level,
-      totalQuestions: safeQuestions.length,
+      totalQuestions: questions.length,
       timeLimit: 600,
-      questions: safeQuestions,
+      questions: questions.map(q => ({
+        id: q.id,
+        type: q.type,
+        question: q.question,
+        options: q.options,
+        language: q.language,
+        level: q.level,
+        hint: q.hint,
+        xp: q.xp,
+      })),
     });
   } catch (e) {
     console.error(e);
@@ -80,19 +82,16 @@ router.post("/levels/:language/:level/test/submit", async (req, res) => {
   try {
     const { language, level } = req.params;
     const { answers, timeTaken } = req.body;
+    const userId = uid(req);
 
     if (!Array.isArray(answers)) {
       return res.status(400).json({ error: "answers must be an array" });
     }
 
-    const exerciseIds = answers
-      .filter((a: any) => a.questionId > 0)
-      .map((a: any) => a.questionId as number);
-
+    const exerciseIds = answers.filter((a: any) => a.questionId > 0).map((a: any) => a.questionId as number);
     let exercises: any[] = [];
     if (exerciseIds.length > 0) {
-      exercises = await db.select().from(exercisesTable)
-        .where(sql`id = ANY(${exerciseIds})`);
+      exercises = await db.select().from(exercisesTable).where(sql`id = ANY(${exerciseIds})`);
     }
 
     const vocabWords = await db.select().from(vocabWordsTable)
@@ -101,7 +100,6 @@ router.post("/levels/:language/:level/test/submit", async (req, res) => {
     const results = answers.map((answer: any) => {
       let correctAnswer = "";
       let question = "";
-
       if (answer.questionId > 0) {
         const ex = exercises.find(e => e.id === answer.questionId);
         correctAnswer = ex?.correctAnswer ?? "";
@@ -112,15 +110,8 @@ router.post("/levels/:language/:level/test/submit", async (req, res) => {
         correctAnswer = word?.translation ?? "";
         question = `What does "${word?.word}" mean?`;
       }
-
       const isCorrect = answer.userAnswer?.trim().toLowerCase() === correctAnswer?.trim().toLowerCase();
-      return {
-        questionId: answer.questionId,
-        question,
-        userAnswer: answer.userAnswer,
-        correctAnswer,
-        isCorrect,
-      };
+      return { questionId: answer.questionId, question, userAnswer: answer.userAnswer, correctAnswer, isCorrect };
     });
 
     const correct = results.filter((r: any) => r.isCorrect).length;
@@ -130,6 +121,7 @@ router.post("/levels/:language/:level/test/submit", async (req, res) => {
     const xpEarned = passed ? 200 + score : Math.round(score * 0.5);
 
     const [testResult] = await db.insert(levelTestResultsTable).values({
+      userId,
       language,
       level,
       score,
@@ -142,27 +134,15 @@ router.post("/levels/:language/:level/test/submit", async (req, res) => {
 
     if (passed) {
       const [existingProgress] = await db.select().from(userProgressTable)
-        .where(eq(userProgressTable.language, language));
+        .where(and(eq(userProgressTable.userId, userId), eq(userProgressTable.language, language)));
       if (existingProgress) {
         await db.update(userProgressTable)
           .set({ totalXp: existingProgress.totalXp + xpEarned })
-          .where(eq(userProgressTable.language, language));
+          .where(and(eq(userProgressTable.userId, userId), eq(userProgressTable.language, language)));
       }
     }
 
-    res.json({
-      id: testResult.id,
-      language,
-      level,
-      score,
-      totalQuestions: total,
-      correctAnswers: correct,
-      timeTaken: timeTaken ?? 0,
-      passed,
-      xpEarned,
-      passingScore: 70,
-      results,
-    });
+    res.json({ id: testResult.id, language, level, score, totalQuestions: total, correctAnswers: correct, timeTaken: timeTaken ?? 0, passed, xpEarned, passingScore: 70, results });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "Failed to submit test" });
@@ -172,15 +152,17 @@ router.post("/levels/:language/:level/test/submit", async (req, res) => {
 router.get("/levels/:language/:level/test/history", async (req, res) => {
   try {
     const { language, level } = req.params;
+    const userId = uid(req);
     const history = await db.select().from(levelTestResultsTable)
-      .where(and(eq(levelTestResultsTable.language, language), eq(levelTestResultsTable.level, level)))
+      .where(and(
+        eq(levelTestResultsTable.userId, userId),
+        eq(levelTestResultsTable.language, language),
+        eq(levelTestResultsTable.level, level)
+      ))
       .orderBy(sql`completed_at desc`)
       .limit(5);
 
-    res.json(history.map(h => ({
-      ...h,
-      completedAt: h.completedAt?.toISOString(),
-    })));
+    res.json(history.map(h => ({ ...h, completedAt: h.completedAt?.toISOString() })));
   } catch (e) {
     res.status(500).json({ error: "Failed to get test history" });
   }
