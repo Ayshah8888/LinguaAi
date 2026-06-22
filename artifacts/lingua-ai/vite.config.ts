@@ -2,39 +2,24 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 const rawPort = process.env.PORT;
+const port = rawPort ? Number(rawPort) : 5173;
 
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
+// In Vercel builds, BASE_PATH is not set — default to "/"
+const basePath = process.env.BASE_PATH ?? "/";
 
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-const basePath = process.env.BASE_PATH;
-
-if (!basePath) {
-  throw new Error(
-    "BASE_PATH environment variable is required but was not provided.",
-  );
-}
+const isReplit = !!process.env.REPL_ID;
+const isDev = process.env.NODE_ENV !== "production";
 
 export default defineConfig({
   base: basePath,
   plugins: [
     react(),
     tailwindcss(),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
+    ...(isDev && isReplit
       ? [
+          (await import("@replit/vite-plugin-runtime-error-modal")).default(),
           await import("@replit/vite-plugin-cartographer").then((m) =>
             m.cartographer({
               root: path.resolve(import.meta.dirname, ".."),
@@ -60,12 +45,10 @@ export default defineConfig({
   },
   server: {
     port,
-    strictPort: true,
+    strictPort: false,
     host: "0.0.0.0",
     allowedHosts: true,
-    fs: {
-      strict: true,
-    },
+    fs: { strict: true },
   },
   preview: {
     port,
